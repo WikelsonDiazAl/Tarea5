@@ -1,0 +1,100 @@
+@page "/Registro_VJ"
+@page "/Registro_VJ/{id:int}"
+@rendermode InteractiveServer
+@inject NavigationManager NavMan
+@inject IJSRuntime JSx
+@inject JuegosContext Jc
+@using Microsoft.EntityFrameworkCore;
+
+<h2 class="text-center">@((instancia.VideojuegosId == 0) ? "Registra un videojuego" : "Editar un videojuego")</h2>
+
+<div class="container">
+<EditForm Model="instancia" OnValidSubmit="Guardar_Registro">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group mb-3">
+        <label for="Nombre">Nombre:</label>
+        <InputText id="Nombre" class="form-control" @bind-Value="instancia.Nombre"/>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="Desarrollador">Desarrollador:</label>
+        <InputText id="Desarrollador" class="form-control" @bind-Value="instancia.Desarrollador"/>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="Plataforma">Plataforma:</label>
+        <InputSelect id="Plataforma" class="form-control" @bind-Value="instancia.PlataformaID">
+            <option value="">Selecciona una plataforma</option>
+            @foreach (var plataforma in plataformass)
+            {
+                <option value="@plataforma.PlataformaID">@plataforma.Nombre</option>
+            }
+        </InputSelect>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="Genero">Género:</label>
+        <InputText id="Genero" class="form-control" @bind-Value="instancia.Genero"/>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="Fecha_Lanzamiento">Fecha de lanzamiento:</label>
+        <InputDate id="Fecha_Lanzamiento" class="form-control" @bind-Value="instancia.Fecha_Lanzamiento"/>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="Imagen">Imagen de la portada:</label>
+        <input type="url" id="Imagen" class="form-control" @bind="instancia.Imagen_Portada"/>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="Descripcion">Descripción:</label>
+        <InputTextArea id="Descripcion" class="form-control" @bind-Value="instancia.Descripcion"/>
+    </div>
+
+    <div class="text-center mb-3">
+        <button type="submit" class="btn btn-primary">@((instancia.VideojuegosId == 0) ? "Registrar" : "Guardar Cambios")</button>
+    </div>
+
+</EditForm>
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    Videojuegos instancia = new Videojuegos();
+    List<Plataforma> plataformass = new List<Plataforma>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Id > 0)
+        {
+            instancia = await Jc.Videojuegos.Include(v => v.Personajes).FirstOrDefaultAsync(v => v.VideojuegosId == Id);
+        }
+
+        plataformass = await Jc.Plataformas.Where(p => p.Estado == "Activo").ToListAsync();
+    }
+
+    async Task Guardar_Registro()
+    {
+        if (instancia.VideojuegosId == 0) 
+        {
+            Jc.Videojuegos.Add(instancia);
+            await Jc.SaveChangesAsync();
+
+            await JSx.InvokeVoidAsync("alert", "Se registró el videojuego");
+        }
+        else
+        {
+            Jc.Videojuegos.Update(instancia);
+            await Jc.SaveChangesAsync();
+
+            await JSx.InvokeVoidAsync("alert", "Se actualizaron los datos del videojuego");
+        }
+        NavMan.NavigateTo("/");
+    }
+}
+

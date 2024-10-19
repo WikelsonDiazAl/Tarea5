@@ -1,0 +1,188 @@
+﻿@page "/"
+@rendermode InteractiveServer
+@inject NavigationManager NavMan
+@inject IJSRuntime JSx
+@inject JuegosContext Jc
+@using Microsoft.EntityFrameworkCore;
+
+<h1 class="text-center mb-3">Videojuegos</h1>
+
+<div class="form-group mb-3">
+    <label for="plataformaSelect">Filtrar por Plataforma:</label>
+    <select id="plataformaSelect" class="form-control" value="@Plataforma_S" @onchange="async (e) => await FiltrarVideojuegos(e)">
+        <option value="">Todas</option>
+        @foreach (var plataforma in plataformas)
+        {
+            <option value="@plataforma.PlataformaID">@plataforma.Nombre</option>
+        }
+    </select>
+</div>
+
+<div class="row">
+    @foreach (var videojuego in videojuegos)
+    {
+        <div class="col-md-3 mb-3">
+            <div class="card" @onclick="() => ShowPopup(videojuego)">
+                <img class="card-img" src="@videojuego.Imagen_Portada" alt="@videojuego.Nombre" />
+            </div>
+        </div>
+    }
+</div>
+
+@if (Popup_Info && Videojuego_S != null)
+{
+    <div class="popup-overlay" @onclick="HidePopup">
+        <div class="popup-content" @onclick:stopPropagation>
+            <h4>@Videojuego_S.Nombre</h4>
+            <p>Desarrollador: @Videojuego_S.Desarrollador</p>
+            <p>Plataforma: @Videojuego_S.Plataforma.Nombre</p>
+            <p>Género: @Videojuego_S.Genero</p>
+            <p>Fecha de lanzamiento: @Videojuego_S.Fecha_Lanzamiento.ToShortDateString()</p>
+            <p>Descripción: @Videojuego_S.Descripcion</p>
+            <button @onclick="Editar_Videojuego" class="btn btn-success">Editar videojuego</button>
+            <button @onclick="Eliminar_Videojuego" class="btn btn-danger">Eliminar videojuego</button>
+            <button @onclick="MostrarPersonajesPopup" class="btn btn-info">Ver Personajes</button>
+            <button class="btn btn-danger" @onclick="HidePopup">Cerrar</button>
+        </div>
+    </div>
+}
+
+@if (Popup_Personaje && Videojuego_S != null)
+{
+    <div class="popup-overlay" @onclick="HidePersonajesPopup">
+        <div class="popup-content" @onclick:stopPropagation>
+            <h5>Personajes del juego: @Videojuego_S.Nombre</h5>
+            <div class="popup-table-container">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Alias</th>
+                            <th>Rol</th>
+                            <th>Habilidad Especial</th>
+                            <th>Arma Favorita</th>
+                            <th>Nivel de poder</th>
+                            <th>Imagen</th>
+                            <th>Modificar</th>
+                            <th>Eliminar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var personaje in Videojuego_S.Personajes)
+                        {
+                            <tr>
+                                <td>@personaje.Nombre</td>
+                                <td>@personaje.Alias</td>
+                                <td>@personaje.Rol</td>
+                                <td>@personaje.Habilidad_Especial</td>
+                                <td>@personaje.Arma_Favorita</td>
+                                <td>@personaje.Nivel_Poder</td>
+                                <td>
+                                    <img src="@personaje.Imagen_Personaje" alt="@personaje.Nombre" style="width: 50px; height: auto;" />
+                                </td>
+                                <td>
+                                    <button @onclick="() => Editar_Personaje(personaje)" class="btn btn-success">Editar Personaje</button>
+                                </td>
+                                <td>
+                                    <button @onclick="() => Eliminar_Personaje(personaje)" class="btn btn-danger">Eliminar Personaje</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn btn-danger" @onclick="HidePersonajesPopup">Cerrar</button>
+        </div>
+    </div>
+}
+
+@code {
+    List<Videojuegos> videojuegos = new List<Videojuegos>();
+    List<Plataforma> plataformas = new List<Plataforma>();
+    string Plataforma_S = "";
+    Videojuegos? Videojuego_S { get; set; } = null;
+    bool Popup_Info { get; set; } = false;
+    bool Popup_Personaje { get; set; } = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        plataformas = await Jc.Plataformas.ToListAsync(); 
+        await CargarVideojuegos();
+    }
+
+    private async Task CargarVideojuegos()
+    {
+        if (string.IsNullOrEmpty(Plataforma_S))
+        {
+            videojuegos = await Jc.Videojuegos.Include(v => v.Personajes).Include(v => v.Plataforma).ToListAsync();
+        }
+        else
+        {
+            videojuegos = await Jc.Videojuegos.Include(v => v.Personajes).Include(v => v.Plataforma).Where(v => v.PlataformaID.ToString() == Plataforma_S) .ToListAsync();
+        }
+    }
+
+    private async Task FiltrarVideojuegos(ChangeEventArgs e)
+    {
+        Plataforma_S = e.Value.ToString();
+        await CargarVideojuegos();
+    }
+
+    private void Editar_Videojuego()
+    {
+        if (Videojuego_S != null)
+        {
+            NavMan.NavigateTo($"/Registro_VJ/{Videojuego_S.VideojuegosId}");
+        }
+    }
+
+    void ShowPopup(Videojuegos videojuego)
+    {
+        Videojuego_S = videojuego;
+        Popup_Info = true;
+    }
+
+    void HidePopup()
+    {
+        Popup_Info = false;
+        Videojuego_S = null;
+    }
+
+    private void MostrarPersonajesPopup()
+    {
+        Popup_Personaje = true;
+    }
+
+    private void HidePersonajesPopup()
+    {
+        Popup_Personaje = false;
+    }
+
+    private void Editar_Personaje(Personajes_Videojuegos personaje)
+    {
+        NavMan.NavigateTo($"/Registro_P/{personaje.Personajes_VideojuegosId}");
+    }
+
+    private async Task Eliminar_Videojuego()
+    {
+        bool confirmado = await JSx.InvokeAsync<bool>("confirm", $"¿Estás seguro de que deseas eliminar el videojuego '{Videojuego_S?.Nombre}'?");
+        if (confirmado && Videojuego_S != null)
+        {
+            Jc.Videojuegos.Remove(Videojuego_S);
+            await Jc.SaveChangesAsync();
+            videojuegos.Remove(Videojuego_S);
+            HidePopup();
+        }
+    }
+
+    private async Task Eliminar_Personaje(Personajes_Videojuegos personaje)
+    {
+        bool confirmado = await JSx.InvokeAsync<bool>("confirm", $"¿Estás seguro de que deseas eliminar el personaje '{personaje.Nombre}'?");
+        if (confirmado && Videojuego_S != null)
+        {
+            Videojuego_S.Personajes.Remove(personaje);
+            Jc.Personajes.Remove(personaje);
+            await Jc.SaveChangesAsync();
+        }
+    }
+}

@@ -1,0 +1,113 @@
+@page "/Gestion_p"
+@rendermode InteractiveServer
+@inject JuegosContext Jc
+@inject NavigationManager NavMan
+@inject IJSRuntime JSx
+@using Microsoft.EntityFrameworkCore;
+
+<h2 class="text-center">Registrar Plataforma</h2>
+
+<div class="container">
+<EditForm Model="instancia" OnValidSubmit="Guardar_Plataforma">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group mb-3">
+        <label for="Nombre">Nombre:</label>
+        <InputText id="Nombre" class="form-control" @bind-Value="instancia.Nombre" />
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="Estado">Estado:</label>
+        <select id="Estado" class="form-control" @bind="instancia.Estado">
+            <option value="Activo">Activo</option>
+            <option value="Inactivo">Inactivo</option>
+        </select>
+    </div>
+
+    <div class="text-center mb-3">
+        <button type="submit" class="btn btn-primary">@((esEdicion) ? "Actualizar Plataforma" : "Registrar Plataforma")</button>
+    </div>
+</EditForm>
+</div>
+
+<h4 class="text-center">Plataformas registradas:</h4>
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Estado</th>
+            <th>Modificar</th>
+            <th>Eliminar</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var plataforma in plataformas)
+        {
+            <tr>
+                <td>@plataforma.Nombre</td>
+                <td>@plataforma.Estado</td>
+                <td>
+                    <button @onclick="() => Editar_Plataforma(plataforma)" class="btn btn-success">Editar</button>
+                </td>
+                <td>
+                    <button @onclick="() => ConfirmarEliminar_Plataforma(plataforma)" class="btn btn-danger">Eliminar</button> <!-- Botón de eliminar -->
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+
+@code {
+    Plataforma instancia = new Plataforma();
+    List<Plataforma> plataformas = new List<Plataforma>(); 
+    bool esEdicion = false; 
+
+    protected override async Task OnInitializedAsync()
+    {
+        plataformas = await Jc.Plataformas.ToListAsync();
+    }
+
+    async Task Guardar_Plataforma()
+    {
+        if (esEdicion)
+        {
+            Jc.Plataformas.Update(instancia);
+            await JSx.InvokeVoidAsync("alert", "Se actualizó la plataforma correctamente.");
+        }
+        else
+        {
+            Jc.Plataformas.Add(instancia);
+            await JSx.InvokeVoidAsync("alert", "Se registró la plataforma correctamente.");
+        }
+
+        await Jc.SaveChangesAsync();
+        plataformas = await Jc.Plataformas.ToListAsync();
+        ResetFormulario();
+    }
+
+    void Editar_Plataforma(Plataforma plataforma)
+    {
+        instancia = plataforma; 
+        esEdicion = true; 
+    }
+
+    async Task ConfirmarEliminar_Plataforma(Plataforma plataforma)
+    {
+        bool confirmacion = await JSx.InvokeAsync<bool>("confirm", $"¿Está seguro de que desea eliminar la plataforma '{plataforma.Nombre}'?");
+        if (confirmacion)
+        {
+            Jc.Plataformas.Remove(plataforma);
+            await Jc.SaveChangesAsync();
+            plataformas = await Jc.Plataformas.ToListAsync();
+            await JSx.InvokeVoidAsync("alert", "La plataforma fue eliminada correctamente.");
+        }
+    }
+
+    void ResetFormulario()
+    {
+        instancia = new Plataforma(); 
+        esEdicion = false;
+    }
+}

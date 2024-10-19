@@ -1,0 +1,104 @@
+@page "/Registro_P"
+@page "/Registro_P/{id:int?}"
+@rendermode InteractiveServer
+@inject JuegosContext Jc
+@inject NavigationManager NavMan
+@inject IJSRuntime JSx
+@using Microsoft.EntityFrameworkCore;
+
+<h2 class="text-center">Registros de personajes</h2>
+
+<div class="container">
+<EditForm Model="instancia" OnValidSubmit="Guardar_Personaje">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group mb-3">
+        <label for="Nombre">Nombre:</label>
+        <InputText id="Nombre" class="form-control" @bind-Value="instancia.Nombre"/>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="Alias">Alias:</label>
+        <InputText id="Alias" class="form-control" @bind-Value="instancia.Alias"/>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="Rol">Rol en el juego:</label>
+        <InputText id="Rol" class="form-control" @bind-Value="instancia.Rol"/>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="Habilidad_Especial">Habilidad especial:</label>
+        <InputText id="Habilidad_Especial" class="form-control" @bind-Value="instancia.Habilidad_Especial"/>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="Arma_Favorita">Arma favorita:</label>
+        <InputText id="Arma_Favorita" class="form-control" @bind-Value="instancia.Arma_Favorita"/>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="Nivel">Nivel de poder:</label>
+        <InputNumber id="Nivel" class="form-control" @bind-Value="instancia.Nivel_Poder"/>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="Videojuego">Videojuego asociado:</label>
+        <InputSelect id="Videojuego" class="form-control" @bind-Value="instancia.VideojuegoId">
+            <option value="">Selecciona un videojuego</option>
+            @foreach (var videojuego in videojuegos)
+            {
+                <option value="@videojuego.VideojuegosId">@videojuego.Nombre</option>
+            }
+        </InputSelect>
+    </div>
+
+    <div class="form-group mb-3">
+        <label for="Imagen">Imagen del personaje:</label>
+        <input type="url" id="Imagen" class="form-control" @bind="instancia.Imagen_Personaje"/>
+    </div>
+
+    <div class="text-center mb-3">
+        <button type="submit" class="btn btn-primary">Registrar</button>
+    </div>
+
+</EditForm>
+</div>
+
+@code {
+    Personajes_Videojuegos instancia = new Personajes_Videojuegos();
+    List<Videojuegos> videojuegos = new List<Videojuegos>();
+    [Parameter] public int? id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        videojuegos = await Jc.Videojuegos.ToListAsync();
+
+        if (id.HasValue)
+        {
+            instancia = await Jc.Personajes.FindAsync(id.Value);
+            if (instancia == null)
+            {
+                NavMan.NavigateTo("/");
+            }
+        }
+    }
+
+    async Task Guardar_Personaje()
+    {
+        if (id.HasValue)
+        {
+            Jc.Personajes.Update(instancia);
+        }
+        else
+        {
+            Jc.Personajes.Add(instancia);
+        }
+
+        await Jc.SaveChangesAsync();
+        
+        await JSx.InvokeVoidAsync("alert", id.HasValue ? "Se actualizó el personaje" : "Se registró el personaje");
+        NavMan.NavigateTo("/");
+    }
+}
